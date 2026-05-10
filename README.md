@@ -20,15 +20,31 @@
 1. این repo را در GitHub بسازید یا fork کنید.
 2. از تب `Actions` workflow با نام `Save Docker Image` را باز کنید.
 3. روی `Run workflow` بزنید.
-4. مقدار `Docker image` را وارد کنید، مثلا:
+4. مقدار `Docker image` را وارد کنید. این باید اسم واقعی Docker image باشد، نه اسم فولدر خروجی.
 
 ```text
 nginx:alpine
 ```
 
+مثال دیگر:
+
+```text
+bugsink/bugsink
+```
+
+اگر `bugsink-bugsink` وارد کنید Docker دنبال imageای با همین اسم می‌گردد و خطای `pull access denied` می‌دهد. `bugsink-bugsink` فقط اسم فولدری است که این ابزار برای خروجی می‌سازد.
+
 5. workflow را اجرا کنید.
-6. بعد از اتمام، فایل ZIP را از GitHub Releases یا از artifact workflow دانلود کنید.
-7. ZIP را extract کنید و یکی از restore scriptها را اجرا کنید.
+6. بعد از اتمام، به پوشه `docker-images/<image-name>/` بروید.
+7. فایل `README.md` همان پوشه را باز کنید. داخلش لینک دانلود فایل‌ها و دستورهای مرحله‌ای همان image آماده است.
+
+نمونه مسیر:
+
+```text
+docker-images/bugsink-bugsink/README.md
+```
+
+اگر کل repo را clone کرده‌اید، می‌توانید یکی از restore scriptها را اجرا کنید.
 
 Linux:
 
@@ -70,6 +86,7 @@ docker-backup-nginx-alpine.zip
 ├── QUICK_START.md
 ├── docker-images/
 │   └── nginx-alpine/
+│       ├── README.md
 │       ├── nginx-alpine.part-001
 │       ├── nginx-alpine.part-002
 │       ├── nginx-alpine.manifest.json

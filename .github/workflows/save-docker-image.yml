@@ -46,6 +46,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   save-image:
     name: Save image
@@ -90,6 +93,7 @@ jobs:
           cp scripts/restore-linux.sh scripts/restore-mac.sh scripts/restore-windows.ps1 "$package_dir/scripts/"
           mkdir -p "$package_dir/${image_dir}"
           cp "${image_dir}/${base}"* "$package_dir/${image_dir}/"
+          cp "${image_dir}/README.md" "$package_dir/${image_dir}/"
 
           (cd ".tmp" && zip -r "../${zip_name}" "docker-backup-${base}")
 

@@ -3,6 +3,7 @@
 ## این فایل شامل چه چیزهایی است؟
 
 - فایل‌های Docker image در پوشه `docker-images/`
+- یک `README.md` اختصاصی داخل پوشه هر image با لینک دانلود و دستورهای آماده
 - manifest و checksum برای بررسی صحت فایل
 - اسکریپت‌های restore برای Linux، macOS و Windows
 
@@ -57,7 +58,10 @@ brew install zstd xz
 docker-images/my-image/my-image.part-001
 docker-images/my-image/my-image.part-002
 docker-images/my-image/my-image.manifest.json
+docker-images/my-image/README.md
 ```
+
+اول فایل `docker-images/my-image/README.md` را باز کنید. آن فایل دستورهای دقیق دانلود، بررسی checksum و `docker load` را برای همان image دارد.
 
 برای zstd:
 
