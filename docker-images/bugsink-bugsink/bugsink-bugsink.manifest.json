@@ -1,0 +1,13 @@
+{
+  "image": "bugsink/bugsink",
+  "output_name": "bugsink-bugsink",
+  "directory": "docker-images/bugsink-bugsink",
+  "compression": "zstd",
+  "raw_tar_size_bytes": 402552320,
+  "stored_size_bytes": 134920762,
+  "split": true,
+  "split_size_mb": 95,
+  "part_count": 2,
+  "created_at": "2026-05-10T16:57:28Z",
+  "checksum_file": "bugsink-bugsink.sha256"
+}
