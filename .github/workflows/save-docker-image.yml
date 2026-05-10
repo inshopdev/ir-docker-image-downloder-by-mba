@@ -31,7 +31,7 @@ on:
         description: "Split files larger than this size in MB"
         required: true
         type: string
-        default: "1900"
+        default: "95"
       commit_to_repo:
         description: "Commit generated files to this repository"
         required: true
@@ -41,7 +41,7 @@ on:
         description: "Create a GitHub Release with a ready-to-use zip"
         required: true
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
@@ -54,14 +54,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zstd pigz xz-utils zip git-lfs
-          git lfs install
+          sudo apt-get install -y zstd pigz xz-utils zip
 
       - name: Prepare scripts
         run: chmod +x scripts/*.sh
@@ -75,6 +72,7 @@ jobs:
           ./scripts/save-image.sh "${{ inputs.image }}" "${{ inputs.output_name }}"
 
       - name: Build release package
+        if: ${{ inputs.create_release }}
         id: package
         shell: bash
         run: |
@@ -98,6 +96,7 @@ jobs:
           echo "package_dir=${package_dir}" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
+        if: ${{ inputs.create_release }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package.outputs.base }}

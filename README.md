@@ -58,9 +58,9 @@ Windows PowerShell:
 | `output_name` | نام خروجی. اگر خالی باشد از نام image ساخته می‌شود | خالی |
 | `compression` | نوع فشرده‌سازی: `zstd`, `gzip`, `xz`, `none` | `zstd` |
 | `zstd_level` | سطح فشرده‌سازی zstd از 1 تا 19 | `10` |
-| `split_size_mb` | اندازه هر قطعه برای split شدن | `1900` |
+| `split_size_mb` | اندازه هر قطعه برای split شدن. برای ذخیره مستقیم در repo زیر 100 نگه دارید | `95` |
 | `commit_to_repo` | خروجی داخل branch فعلی commit شود | `true` |
-| `create_release` | فایل ZIP در GitHub Releases منتشر شود | `true` |
+| `create_release` | فایل ZIP در GitHub Releases منتشر شود | `false` |
 
 ## ساختار خروجی
 
@@ -99,7 +99,9 @@ COMPRESSION=zstd ZSTD_LEVEL=12 SPLIT_SIZE_MB=1000 ./scripts/save-image.sh nginx:
 
 ## نکته درباره محدودیت GitHub
 
-برای فایل‌های بزرگ، GitHub معمولی مناسب نیست. این repo فایل‌های حجیم را با Git LFS track می‌کند. با این حال GitHub LFS quota دارد، پس برای imageهای خیلی بزرگ بهتر است `create_release=true` و `commit_to_repo=false` استفاده شود تا خروجی فقط در Release/Artifact بماند.
+برای اینکه فایل‌ها مثل `docker-images/name.tar.zst` مستقیما داخل codebase دیده شوند، این repo از Git LFS برای imageها استفاده نمی‌کند. GitHub فایل‌های بزرگ‌تر از 100MB را در git معمولی reject می‌کند، پس مقدار `split_size_mb` را زیر 100 نگه دارید. پیش‌فرض پروژه `95` است.
+
+اگر image خیلی بزرگ است، workflow آن را به چند فایل `.part-*` تقسیم می‌کند تا همه قطعه‌ها داخل `docker-images/` commit شوند و URL آن‌ها از نوع معمولی `github.com/.../blob/...` باشد، نه `media.githubusercontent.com`.
 
 ## بازیابی دستی
 
