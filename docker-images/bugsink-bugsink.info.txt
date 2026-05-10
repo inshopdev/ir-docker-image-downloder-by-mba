@@ -1,9 +1,0 @@
-Image: bugsink/bugsink
-Output name: bugsink-bugsink
-Compression: zstd
-Raw tar size: 402552320 bytes
-Stored size: 134920762 bytes
-Split: false
-Part count: 0
-Started: 2026-05-10T16:28:41Z
-Finished: 2026-05-10T16:28:58Z
