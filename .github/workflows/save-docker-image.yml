@@ -66,13 +66,32 @@ jobs:
       - name: Prepare scripts
         run: chmod +x scripts/*.sh
 
+      - name: Validate inputs
+        shell: bash
+        env:
+          COMMIT_TO_REPO: ${{ inputs.commit_to_repo }}
+          SPLIT_SIZE_MB: ${{ inputs.split_size_mb }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$SPLIT_SIZE_MB" =~ ^[0-9]+$ ]]; then
+            echo "split_size_mb must be a number."
+            exit 1
+          fi
+          if [ "$COMMIT_TO_REPO" = "true" ] && [ "$SPLIT_SIZE_MB" -gt 95 ]; then
+            echo "split_size_mb must stay at 95 or lower when commit_to_repo is true."
+            echo "GitHub rejects normal git files larger than 100MB."
+            exit 1
+          fi
+
       - name: Save Docker image
         env:
+          IMAGE_INPUT: ${{ inputs.image }}
+          OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
           COMPRESSION: ${{ inputs.compression }}
           ZSTD_LEVEL: ${{ inputs.zstd_level }}
           SPLIT_SIZE_MB: ${{ inputs.split_size_mb }}
         run: |
-          ./scripts/save-image.sh "${{ inputs.image }}" "${{ inputs.output_name }}"
+          ./scripts/save-image.sh "$IMAGE_INPUT" "$OUTPUT_NAME_INPUT"
 
       - name: Build release package
         if: ${{ inputs.create_release }}
@@ -94,6 +113,7 @@ jobs:
           mkdir -p "$package_dir/${image_dir}"
           cp "${image_dir}/${base}"* "$package_dir/${image_dir}/"
           cp "${image_dir}/README.md" "$package_dir/${image_dir}/"
+          cp "${image_dir}/VERSION.txt" "$package_dir/${image_dir}/"
 
           (cd ".tmp" && zip -r "../${zip_name}" "docker-backup-${base}")
 
@@ -110,10 +130,14 @@ jobs:
           path: |
             ${{ steps.package.outputs.zip_name }}
             ${{ steps.package.outputs.image_dir }}/${{ steps.package.outputs.base }}*
+            ${{ steps.package.outputs.image_dir }}/README.md
+            ${{ steps.package.outputs.image_dir }}/VERSION.txt
 
       - name: Commit generated files
         if: ${{ inputs.commit_to_repo }}
         shell: bash
+        env:
+          IMAGE_INPUT: ${{ inputs.image }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -122,7 +146,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No generated files to commit."
           else
-            git commit -m "Add Docker image backup for ${{ inputs.image }}"
+            git commit -m "Add Docker image backup for ${IMAGE_INPUT}"
             git push
           fi
 
@@ -130,17 +154,18 @@ jobs:
         if: ${{ inputs.create_release }}
         env:
           GH_TOKEN: ${{ github.token }}
+          IMAGE_INPUT: ${{ inputs.image }}
         shell: bash
         run: |
           set -euo pipefail
           tag="backup-${{ steps.package.outputs.base }}-${{ github.run_number }}"
-          title="Docker backup: ${{ inputs.image }}"
+          title="Docker backup: ${IMAGE_INPUT}"
           body_file=".tmp/release-notes.md"
 
           cat > "$body_file" <<EOF
           Docker image backup for:
 
-          \`${{ inputs.image }}\`
+          \`${IMAGE_INPUT}\`
 
           Download the ZIP, extract it, then run the restore script for your OS.
           See \`QUICK_START.md\` inside the ZIP.

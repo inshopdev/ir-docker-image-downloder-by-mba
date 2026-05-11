@@ -9,6 +9,10 @@ SPLIT_SIZE_MB="${SPLIT_SIZE_MB:-95}"
 OUTPUT_ROOT="${OUTPUT_DIR:-docker-images}"
 REPOSITORY="${GITHUB_REPOSITORY:-OWNER/REPO}"
 BRANCH="${GITHUB_REF_NAME:-master}"
+PROJECT_NAME="Docker Image Saver"
+PROJECT_TEAM="اپ ساز"
+PROJECT_WEBSITE="https://appsaz.ir"
+PROJECT_DEVELOPER="محمد بهشت آئین"
 
 if [ -z "$IMAGE" ]; then
   echo "Usage: $0 <docker-image> [output-name]"
@@ -17,6 +21,22 @@ if [ -z "$IMAGE" ]; then
 fi
 
 command -v docker >/dev/null 2>&1 || { echo "docker is required"; exit 1; }
+
+if ! [[ "$IMAGE" =~ ^[A-Za-z0-9._/@:-]+$ ]]; then
+  echo "Invalid Docker image name: $IMAGE"
+  echo "Allowed characters: letters, numbers, dot, underscore, slash, colon, at-sign, and dash."
+  exit 1
+fi
+
+if ! [[ "$SPLIT_SIZE_MB" =~ ^[0-9]+$ ]] || [ "$SPLIT_SIZE_MB" -lt 1 ]; then
+  echo "SPLIT_SIZE_MB must be a positive number."
+  exit 1
+fi
+
+if ! [[ "$ZSTD_LEVEL" =~ ^[0-9]+$ ]] || [ "$ZSTD_LEVEL" -lt 1 ] || [ "$ZSTD_LEVEL" -gt 19 ]; then
+  echo "ZSTD_LEVEL must be a number between 1 and 19."
+  exit 1
+fi
 
 safe_name() {
   printf '%s' "$1" \
@@ -31,8 +51,30 @@ else
   OUTPUT_NAME="$(safe_name "$OUTPUT_NAME")"
 fi
 
+if [ -z "$OUTPUT_NAME" ]; then
+  echo "Output name is empty after sanitizing. Use a Docker image name like nginx:alpine."
+  exit 1
+fi
+
+if [[ "$IMAGE" == *@* ]]; then
+  IMAGE_REPOSITORY="${IMAGE%@*}"
+  IMAGE_VERSION="${IMAGE#*@}"
+  IMAGE_VERSION_KIND="digest"
+else
+  LAST_IMAGE_PART="${IMAGE##*/}"
+  if [[ "$LAST_IMAGE_PART" == *:* ]]; then
+    IMAGE_REPOSITORY="${IMAGE%:*}"
+    IMAGE_VERSION="${LAST_IMAGE_PART##*:}"
+  else
+    IMAGE_REPOSITORY="$IMAGE"
+    IMAGE_VERSION="latest"
+  fi
+  IMAGE_VERSION_KIND="tag"
+fi
+
 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_NAME}"
 mkdir -p "$OUTPUT_DIR" .tmp
+rm -f "${OUTPUT_DIR}/${OUTPUT_NAME}"* "${OUTPUT_DIR}/README.md" "${OUTPUT_DIR}/VERSION.txt"
 
 RAW_TAR=".tmp/${OUTPUT_NAME}.tar"
 BASE="${OUTPUT_DIR}/${OUTPUT_NAME}"
@@ -56,6 +98,9 @@ fi
 
 echo "Saving Docker image to tar"
 docker save "$IMAGE" -o "$RAW_TAR"
+
+IMAGE_ID="$(docker image inspect "$IMAGE" --format '{{.Id}}' 2>/dev/null || true)"
+IMAGE_DIGESTS="$(docker image inspect "$IMAGE" --format '{{range .RepoDigests}}{{println .}}{{end}}' 2>/dev/null | sed '/^$/d' || true)"
 
 RAW_SIZE="$(wc -c < "$RAW_TAR" | tr -d ' ')"
 
@@ -98,34 +143,41 @@ if [ -f "$RAW_TAR" ]; then
 fi
 
 COMPRESSED_SIZE="$(wc -c < "$OUT_FILE" | tr -d ' ')"
+ARCHIVE_FILE="$(basename "$OUT_FILE")"
 SPLIT_SIZE_BYTES=$((SPLIT_SIZE_MB * 1024 * 1024))
 SPLIT=false
 PART_COUNT=0
 
 if [ "$COMPRESSED_SIZE" -gt "$SPLIT_SIZE_BYTES" ]; then
   echo "Splitting into ${SPLIT_SIZE_MB}MB parts"
-  split -b "${SPLIT_SIZE_MB}M" -d -a 3 "$OUT_FILE" "${BASE}.part-"
+  split -b "${SPLIT_SIZE_MB}M" -d -a 3 "$OUT_FILE" "${OUT_FILE}.part-"
   rm -f "$OUT_FILE"
   SPLIT=true
-  PART_COUNT="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name "${OUTPUT_NAME}.part-*" | wc -l | tr -d ' ')"
+  PART_COUNT="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name "${ARCHIVE_FILE}.part-*" | wc -l | tr -d ' ')"
 fi
 
 SHA_FILE="${BASE}.sha256"
 if [ "$SPLIT" = true ]; then
-  (cd "$OUTPUT_DIR" && sha256sum "${OUTPUT_NAME}".part-* > "${OUTPUT_NAME}.sha256")
+  (cd "$OUTPUT_DIR" && sha256sum "${ARCHIVE_FILE}".part-* > "${OUTPUT_NAME}.sha256")
 else
-  (cd "$OUTPUT_DIR" && sha256sum "$(basename "$OUT_FILE")" > "${OUTPUT_NAME}.sha256")
+  (cd "$OUTPUT_DIR" && sha256sum "$ARCHIVE_FILE" > "${OUTPUT_NAME}.sha256")
 fi
 
 END_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 INFO_FILE="${BASE}.info.txt"
 MANIFEST_FILE="${BASE}.manifest.json"
 README_FILE="${OUTPUT_DIR}/README.md"
+VERSION_FILE="${OUTPUT_DIR}/VERSION.txt"
 
 cat > "$INFO_FILE" <<EOF
 Image: $IMAGE
+Repository: $IMAGE_REPOSITORY
+Version type: $IMAGE_VERSION_KIND
+Version: $IMAGE_VERSION
+Image ID: $IMAGE_ID
 Output name: $OUTPUT_NAME
 Compression: $COMPRESSION
+Archive file: $ARCHIVE_FILE
 Raw tar size: $RAW_SIZE bytes
 Stored size: $COMPRESSED_SIZE bytes
 Split: $SPLIT
@@ -134,11 +186,29 @@ Started: $START_TIME
 Finished: $END_TIME
 EOF
 
+{
+  echo "Image: $IMAGE"
+  echo "Repository: $IMAGE_REPOSITORY"
+  echo "Version type: $IMAGE_VERSION_KIND"
+  echo "Version: $IMAGE_VERSION"
+  echo "Image ID: $IMAGE_ID"
+  if [ -n "$IMAGE_DIGESTS" ]; then
+    echo "Repo digests:"
+    printf '%s\n' "$IMAGE_DIGESTS"
+  fi
+  echo "Created at: $END_TIME"
+} > "$VERSION_FILE"
+
 cat > "$MANIFEST_FILE" <<EOF
 {
   "image": "$IMAGE",
+  "image_repository": "$IMAGE_REPOSITORY",
+  "version_type": "$IMAGE_VERSION_KIND",
+  "version": "$IMAGE_VERSION",
+  "image_id": "$IMAGE_ID",
   "output_name": "$OUTPUT_NAME",
   "directory": "docker-images/$OUTPUT_NAME",
+  "archive_file": "$ARCHIVE_FILE",
   "compression": "$COMPRESSION",
   "raw_tar_size_bytes": $RAW_SIZE,
   "stored_size_bytes": $COMPRESSED_SIZE,
@@ -152,9 +222,41 @@ EOF
 
 RAW_BASE_URL="https://raw.githubusercontent.com/${REPOSITORY}/${BRANCH}/docker-images/${OUTPUT_NAME}"
 PAGE_BASE_URL="https://github.com/${REPOSITORY}/blob/${BRANCH}/docker-images/${OUTPUT_NAME}"
+FOLDER_URL="https://github.com/${REPOSITORY}/tree/${BRANCH}/docker-images/${OUTPUT_NAME}"
+
+case "$COMPRESSION" in
+  zstd)
+    COMPRESSION_TOOL="zstd"
+    COMPRESSION_TOOL_URL="https://github.com/facebook/zstd/releases"
+    UBUNTU_INSTALL="sudo apt update && sudo apt install -y docker.io zstd"
+    MAC_INSTALL="brew install zstd"
+    WINDOWS_INSTALL="choco install zstd"
+    ;;
+  gzip)
+    COMPRESSION_TOOL="gzip"
+    COMPRESSION_TOOL_URL="https://gnuwin32.sourceforge.net/packages/gzip.htm"
+    UBUNTU_INSTALL="sudo apt update && sudo apt install -y docker.io gzip"
+    MAC_INSTALL="# gzip is included with macOS by default"
+    WINDOWS_INSTALL="choco install gzip"
+    ;;
+  xz)
+    COMPRESSION_TOOL="xz"
+    COMPRESSION_TOOL_URL="https://tukaani.org/xz/"
+    UBUNTU_INSTALL="sudo apt update && sudo apt install -y docker.io xz-utils"
+    MAC_INSTALL="brew install xz"
+    WINDOWS_INSTALL="choco install xz"
+    ;;
+  none)
+    COMPRESSION_TOOL="none"
+    COMPRESSION_TOOL_URL="Not needed"
+    UBUNTU_INSTALL="sudo apt update && sudo apt install -y docker.io"
+    MAC_INSTALL="# Only Docker is required"
+    WINDOWS_INSTALL="# Only Docker is required"
+    ;;
+esac
 
 if [ "$SPLIT" = true ]; then
-  DOWNLOAD_FILES="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name "${OUTPUT_NAME}.part-*" -printf '%f\n' | sort)"
+  DOWNLOAD_FILES="$(find "$OUTPUT_DIR" -maxdepth 1 -type f -name "${ARCHIVE_FILE}.part-*" -printf '%f\n' | sort)"
   DOWNLOAD_COMMANDS=""
   POWERSHELL_DOWNLOAD_COMMANDS=""
   for file in $DOWNLOAD_FILES; do
@@ -163,29 +265,44 @@ if [ "$SPLIT" = true ]; then
     POWERSHELL_DOWNLOAD_COMMANDS="${POWERSHELL_DOWNLOAD_COMMANDS}Invoke-WebRequest -Uri \"${RAW_BASE_URL}/${file}\" -OutFile \"${file}\"
 "
   done
+  POWERSHELL_HASH_COMMAND="Get-FileHash -Algorithm SHA256 ${ARCHIVE_FILE}.part-*"
   case "$COMPRESSION" in
-    zstd) LOAD_COMMAND="cat ${OUTPUT_NAME}.part-* | zstd -d -c | docker load" ;;
-    gzip) LOAD_COMMAND="cat ${OUTPUT_NAME}.part-* | gunzip -c | docker load" ;;
-    xz) LOAD_COMMAND="cat ${OUTPUT_NAME}.part-* | xz -d -c | docker load" ;;
-    none) LOAD_COMMAND="cat ${OUTPUT_NAME}.part-* | docker load" ;;
+    zstd)
+      EXTRACT_COMMAND="cat ${ARCHIVE_FILE}.part-* > ${ARCHIVE_FILE}"
+      LOAD_COMMAND="zstd -d -c ${ARCHIVE_FILE} | docker load"
+      ;;
+    gzip)
+      EXTRACT_COMMAND="cat ${ARCHIVE_FILE}.part-* > ${ARCHIVE_FILE}"
+      LOAD_COMMAND="gunzip -c ${ARCHIVE_FILE} | docker load"
+      ;;
+    xz)
+      EXTRACT_COMMAND="cat ${ARCHIVE_FILE}.part-* > ${ARCHIVE_FILE}"
+      LOAD_COMMAND="xz -d -c ${ARCHIVE_FILE} | docker load"
+      ;;
+    none)
+      EXTRACT_COMMAND="cat ${ARCHIVE_FILE}.part-* > ${ARCHIVE_FILE}"
+      LOAD_COMMAND="docker load -i ${ARCHIVE_FILE}"
+      ;;
   esac
-  POWERSHELL_COMBINE_COMMAND='$out = [System.IO.File]::Create("image.compressed")
-Get-ChildItem -Filter "*.part-*" | Sort-Object Name | ForEach-Object {
+  POWERSHELL_COMBINE_COMMAND='$out = [System.IO.File]::Create("'"${ARCHIVE_FILE}"'")
+Get-ChildItem -Filter "'"${ARCHIVE_FILE}.part-*"'" | Sort-Object Name | ForEach-Object {
     $in = [System.IO.File]::OpenRead($_.FullName)
     try { $in.CopyTo($out) } finally { $in.Close() }
 }
 $out.Close()'
   case "$COMPRESSION" in
-    zstd) POWERSHELL_LOAD_COMMAND="zstd -d -c image.compressed | docker load" ;;
-    gzip) POWERSHELL_LOAD_COMMAND="gzip -d -c image.compressed | docker load" ;;
-    xz) POWERSHELL_LOAD_COMMAND="xz -d -c image.compressed | docker load" ;;
-    none) POWERSHELL_LOAD_COMMAND="docker load -i image.compressed" ;;
+    zstd) POWERSHELL_LOAD_COMMAND="zstd -d -c ${ARCHIVE_FILE} | docker load" ;;
+    gzip) POWERSHELL_LOAD_COMMAND="gzip -d -c ${ARCHIVE_FILE} | docker load" ;;
+    xz) POWERSHELL_LOAD_COMMAND="xz -d -c ${ARCHIVE_FILE} | docker load" ;;
+    none) POWERSHELL_LOAD_COMMAND="docker load -i ${ARCHIVE_FILE}" ;;
   esac
 else
-  DOWNLOAD_FILE="$(basename "$OUT_FILE")"
+  DOWNLOAD_FILE="$ARCHIVE_FILE"
   DOWNLOAD_FILES="$DOWNLOAD_FILE"
   DOWNLOAD_COMMANDS="curl -L -o ${DOWNLOAD_FILE} ${RAW_BASE_URL}/${DOWNLOAD_FILE}"
   POWERSHELL_DOWNLOAD_COMMANDS="Invoke-WebRequest -Uri \"${RAW_BASE_URL}/${DOWNLOAD_FILE}\" -OutFile \"${DOWNLOAD_FILE}\""
+  POWERSHELL_HASH_COMMAND="Get-FileHash -Algorithm SHA256 ${DOWNLOAD_FILE}"
+  EXTRACT_COMMAND="# Not needed. This backup is already a single archive file."
   case "$COMPRESSION" in
     zstd) LOAD_COMMAND="zstd -d -c ${DOWNLOAD_FILE} | docker load" ;;
     gzip) LOAD_COMMAND="gunzip -c ${DOWNLOAD_FILE} | docker load" ;;
@@ -202,7 +319,7 @@ else
 fi
 
 FILE_LINKS=""
-for file in $DOWNLOAD_FILES "${OUTPUT_NAME}.manifest.json" "${OUTPUT_NAME}.sha256" "${OUTPUT_NAME}.info.txt"; do
+for file in $DOWNLOAD_FILES "${OUTPUT_NAME}.manifest.json" "${OUTPUT_NAME}.sha256" "${OUTPUT_NAME}.info.txt" "VERSION.txt"; do
   FILE_LINKS="${FILE_LINKS}- [${file}](${PAGE_BASE_URL}/${file})
 "
 done
@@ -210,15 +327,71 @@ done
 cat > "$README_FILE" <<EOF
 # Docker image backup: \`$IMAGE\`
 
-This folder contains everything needed to download and load this Docker image without using Docker Hub.
+این فولدر همه چیز لازم برای دانلود و بازیابی این Docker image را دارد، بدون اینکه سیستم مقصد مستقیم به Docker Hub یا registry اصلی وصل شود.
 
-## Files
+## لینک فایل‌ها
 
 $FILE_LINKS
 
+Folder page: [$FOLDER_URL]($FOLDER_URL)
+
+## فهرست مطالب
+
+- [مشخصات image](#مشخصات-image)
+- [لینک فایل‌ها](#لینک-فایلها)
+- [ابزارهای مورد نیاز](#ابزارهای-مورد-نیاز)
+- [Linux / macOS](#linux--macos)
+- [Windows PowerShell](#windows-powershell)
+- [SHA256 یعنی چه؟](#sha256-یعنی-چه)
+- [حمایت از پروژه](#حمایت-از-پروژه)
+
+## مشخصات image
+
+| مورد | مقدار |
+| --- | --- |
+| Docker image | \`$IMAGE\` |
+| Repository | \`$IMAGE_REPOSITORY\` |
+| Version type | \`$IMAGE_VERSION_KIND\` |
+| Version | \`$IMAGE_VERSION\` |
+| Output folder | \`docker-images/$OUTPUT_NAME\` |
+| Archive file | \`$ARCHIVE_FILE\` |
+| Compression | \`$COMPRESSION\` |
+| Split | \`$SPLIT\` |
+| Part count | \`$PART_COUNT\` |
+
+نسخه و جزئیات image داخل فایل [VERSION.txt](${PAGE_BASE_URL}/VERSION.txt) هم ذخیره شده است.
+
+## ابزارهای مورد نیاز
+
+همیشه Docker لازم است:
+
+- Docker Desktop: https://www.docker.com/products/docker-desktop/
+- Docker install docs: https://docs.docker.com/engine/install/
+
+برای این backup ابزار زیر هم لازم است:
+
+- Required compression tool: \`$COMPRESSION_TOOL\`
+- Download page: $COMPRESSION_TOOL_URL
+
+اگر با خطایی مثل \`zstd: command not found\` یا \`xz: command not found\` روبه‌رو شدید، یعنی ابزار مربوطه نصب نیست.
+
 ## Linux / macOS
 
-### 1. Download the files
+### 1. نصب ابزارها
+
+Ubuntu/Debian:
+
+\`\`\`bash
+$UBUNTU_INSTALL
+\`\`\`
+
+macOS:
+
+\`\`\`bash
+$MAC_INSTALL
+\`\`\`
+
+### 2. دانلود فایل‌ها
 
 \`\`\`bash
 mkdir -p ${OUTPUT_NAME}
@@ -227,21 +400,49 @@ $DOWNLOAD_COMMANDS
 curl -L -o ${OUTPUT_NAME}.sha256 ${RAW_BASE_URL}/${OUTPUT_NAME}.sha256
 \`\`\`
 
-### 2. Check the download
+### 3. بررسی سالم بودن دانلود
 
 \`\`\`bash
 sha256sum -c ${OUTPUT_NAME}.sha256
 \`\`\`
 
-### 3. Load into Docker
+### 4. ساخت archive اصلی از قطعه‌ها
+
+\`\`\`bash
+$EXTRACT_COMMAND
+\`\`\`
+
+### 5. Load داخل Docker
 
 \`\`\`bash
 $LOAD_COMMAND
 \`\`\`
 
+### 6. بررسی نتیجه
+
+\`\`\`bash
+docker images
+\`\`\`
+
 ## Windows PowerShell
 
-### 1. Download the files
+### 1. نصب ابزارها
+
+Docker Desktop:
+
+https://www.docker.com/products/docker-desktop/
+
+Compression tool:
+
+$COMPRESSION_TOOL_URL
+
+اگر Chocolatey دارید:
+
+\`\`\`powershell
+$WINDOWS_INSTALL
+\`\`\`
+
+### 2. دانلود فایل‌ها
 
 \`\`\`powershell
 New-Item -ItemType Directory -Force ${OUTPUT_NAME}
@@ -250,23 +451,97 @@ $POWERSHELL_DOWNLOAD_COMMANDS
 Invoke-WebRequest -Uri "${RAW_BASE_URL}/${OUTPUT_NAME}.sha256" -OutFile "${OUTPUT_NAME}.sha256"
 \`\`\`
 
-### 2. Extract or combine files
+### 3. بررسی SHA256
+
+PowerShell روی Windows به صورت پیش‌فرض فایل sha256sum لینوکسی را مستقیم نمی‌خواند. برای بررسی دستی، hash هر فایل را با مقدار داخل \`${OUTPUT_NAME}.sha256\` مقایسه کنید:
+
+\`\`\`powershell
+$POWERSHELL_HASH_COMMAND
+\`\`\`
+
+### 4. ساخت archive اصلی از قطعه‌ها
 
 \`\`\`powershell
 $POWERSHELL_COMBINE_COMMAND
 \`\`\`
 
-### 3. Load into Docker
+### 5. Load داخل Docker
 
 \`\`\`powershell
 $POWERSHELL_LOAD_COMMAND
 \`\`\`
 
-## Requirements
+### 6. بررسی نتیجه
 
-- Docker must be installed and running.
-- For zstd backups, install \`zstd\`.
-- For xz backups, install \`xz\`.
+\`\`\`powershell
+docker images
+\`\`\`
+
+## SHA256 یعنی چه؟
+
+فایل \`${OUTPUT_NAME}.sha256\` برای این است که مطمئن شوید فایل‌هایی که دانلود کرده‌اید سالم، کامل و همان فایل‌هایی هستند که GitHub Action ساخته است.
+
+این checksum نشان می‌دهد قطعه‌های archive بعد از ساخته شدن تغییری نکرده‌اند و دانلود شما ناقص یا خراب نیست.
+
+نکته مهم: SHA256 اینجا برای فایل‌های backup داخل repo است، نه تایید امنیتی جداگانه درباره source image در Docker Hub.
+
+## حمایت از پروژه
+
+بزرگ‌ترین حمایت از ما معرفی و منتشر کردن این پروژه است. اگر این backup به شما کمک کرد، لطفا Docker Image Saver را به برنامه‌نویسان، تیم‌ها و شرکت‌هایی که با محدودیت Docker Hub یا registryها مشکل دارند معرفی کنید.
+
+همچنین می‌توانید با Star دادن، Fork کردن، ثبت Issue، ارسال Pull Request یا حمایت مالی به بهتر شدن این ابزار کمک کنید.
+
+### Donate
+
+آدرس‌ها به ترتیب پیشنهادی قرار گرفته‌اند: اول شبکه‌های کم‌هزینه‌تر، و بین گزینه‌ها اولویت با USDT است.
+
+#### USDT TRC20 (Tron) - پیشنهادی
+
+\`\`\`text
+TRNfUz3zXsJYDQMYG5zxDseX3MSFxx8bxr
+\`\`\`
+
+#### USDT SPL (Solana)
+
+\`\`\`text
+FcCT54fD8A3VQ7nqNNf4kZprgCjdEFrJ7BSQBDb7i13i
+\`\`\`
+
+#### USDT BEP20 (BNB Smart Chain)
+
+\`\`\`text
+0x1126A4023F4EC18CfeF036C71e94F5D7D6D0902B
+\`\`\`
+
+#### TON
+
+\`\`\`text
+UQCvY7I4ROxsYOldjfRR-QnjiwdMlCsMA6Jw2tu2lRLDx6BC
+\`\`\`
+
+#### TRX / Tron
+
+\`\`\`text
+TRNfUz3zXsJYDQMYG5zxDseX3MSFxx8bxr
+\`\`\`
+
+#### BNB
+
+\`\`\`text
+0x1126A4023F4EC18CfeF036C71e94F5D7D6D0902B
+\`\`\`
+
+#### BTC
+
+\`\`\`text
+bc1qnhjk9zqmpg3wytw47luy8qsu2jhwpz83ll265k
+\`\`\`
+
+ساخته شده با \`$PROJECT_NAME\` از تیم \`$PROJECT_TEAM\`.
+
+وب‌سایت اپ ساز: $PROJECT_WEBSITE
+
+برنامه‌نویس پروژه: \`$PROJECT_DEVELOPER\`
 
 Generated at: \`$END_TIME\`
 EOF

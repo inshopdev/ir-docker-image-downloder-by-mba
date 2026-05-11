@@ -1,13 +1,51 @@
-# راهنمای سریع استفاده از Docker Image Backup
+# راهنمای سریع Docker Image Backup
 
-## این فایل شامل چه چیزهایی است؟
+این فایل نسخه کوتاه راهنماست. برای هر image، راهنمای اصلی داخل همان فولدر ساخته می‌شود:
 
-- فایل‌های Docker image در پوشه `docker-images/`
-- یک `README.md` اختصاصی داخل پوشه هر image با لینک دانلود و دستورهای آماده
-- manifest و checksum برای بررسی صحت فایل
-- اسکریپت‌های restore برای Linux، macOS و Windows
+```text
+docker-images/<image-name>/README.md
+```
 
-## راحت‌ترین روش بازیابی
+مثال:
+
+```text
+docker-images/bugsink-bugsink/README.md
+```
+
+## روش پیشنهادی
+
+1. وارد فولدر image شوید.
+2. فایل `README.md` همان فولدر را باز کنید.
+3. دستورهای مخصوص همان image و همان compression را اجرا کنید.
+
+## ابزارهای مورد نیاز
+
+- Docker Desktop: https://www.docker.com/products/docker-desktop/
+- Docker installation docs: https://docs.docker.com/engine/install/
+- zstd: https://github.com/facebook/zstd/releases
+- XZ Utils: https://tukaani.org/xz/
+- gzip for Windows: https://gnuwin32.sourceforge.net/packages/gzip.htm
+
+Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install -y zstd gzip xz-utils
+```
+
+macOS:
+
+```bash
+brew install zstd xz
+```
+
+Windows با Chocolatey:
+
+```powershell
+choco install zstd gzip xz
+```
+
+## بازیابی با اسکریپت‌ها
 
 Linux:
 
@@ -29,94 +67,42 @@ Windows PowerShell:
 .\scripts\restore-windows.ps1
 ```
 
-## نصب ابزارهای مورد نیاز
+## بازیابی دستی zstd split
 
-Windows با Chocolatey:
-
-```powershell
-choco install zstd gzip xz
-```
-
-Ubuntu/Debian:
-
-```bash
-sudo apt update
-sudo apt install -y zstd gzip xz-utils
-```
-
-macOS با Homebrew:
-
-```bash
-brew install zstd xz
-```
-
-## بازیابی دستی
-
-اگر فایل split شده باشد، معمولا فایل‌هایی شبیه این دارید:
+اگر فایل‌ها این شکلی هستند:
 
 ```text
-docker-images/my-image/my-image.part-001
-docker-images/my-image/my-image.part-002
-docker-images/my-image/my-image.manifest.json
-docker-images/my-image/README.md
+my-image.tar.zst.part-000
+my-image.tar.zst.part-001
 ```
 
-اول فایل `docker-images/my-image/README.md` را باز کنید. آن فایل دستورهای دقیق دانلود، بررسی checksum و `docker load` را برای همان image دارد.
-
-برای zstd:
+Linux/macOS:
 
 ```bash
-cat docker-images/my-image/my-image.part-* | zstd -d -c | docker load
-```
-
-برای gzip:
-
-```bash
-cat docker-images/my-image/my-image.part-* | gunzip -c | docker load
-```
-
-برای xz:
-
-```bash
-cat docker-images/my-image/my-image.part-* | xz -d -c | docker load
-```
-
-اگر فایل split نشده باشد:
-
-```bash
-zstd -d -c docker-images/my-image/my-image.tar.zst | docker load
-gunzip -c docker-images/my-image/my-image.tar.gz | docker load
-xz -d -c docker-images/my-image/my-image.tar.xz | docker load
-docker load -i docker-images/my-image/my-image.tar
-```
-
-## بررسی موفقیت
-
-بعد از اجرای restore باید خروجی شبیه این ببینید:
-
-```text
-Loaded image: nginx:alpine
-```
-
-برای تایید:
-
-```bash
+cat my-image.tar.zst.part-* > my-image.tar.zst
+zstd -d -c my-image.tar.zst | docker load
 docker images
 ```
 
-## خطاهای رایج
+Windows PowerShell:
 
-اگر Docker اجرا نیست:
-
-```bash
-docker --version
-docker info
+```powershell
+$out = [System.IO.File]::Create("my-image.tar.zst")
+Get-ChildItem -Filter "my-image.tar.zst.part-*" | Sort-Object Name | ForEach-Object {
+    $in = [System.IO.File]::OpenRead($_.FullName)
+    try { $in.CopyTo($out) } finally { $in.Close() }
+}
+$out.Close()
+zstd -d -c my-image.tar.zst | docker load
+docker images
 ```
 
-اگر فایل خراب دانلود شده:
+## SHA256
+
+فایل `.sha256` برای بررسی سالم دانلود شدن فایل‌هاست:
 
 ```bash
-find docker-images -name "*.sha256" -execdir sha256sum -c {} \;
+sha256sum -c my-image.sha256
 ```
 
-اگر `zstd` نصب نیست، از بخش نصب ابزارهای مورد نیاز همین فایل استفاده کنید.
+این checksum نشان می‌دهد قطعه‌هایی که دانلود کرده‌اید همان قطعه‌هایی هستند که GitHub Action ساخته و فایل‌ها ناقص یا خراب دانلود نشده‌اند.

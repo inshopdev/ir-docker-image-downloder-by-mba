@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE_ROOT="${IMAGE_DIR:-$ROOT_DIR/docker-images}"
+IMAGE_ROOT="${1:-${IMAGE_DIR:-$ROOT_DIR/docker-images}}"
 
 command -v docker >/dev/null 2>&1 || { echo "docker is required"; exit 1; }
 
@@ -19,8 +19,10 @@ SPLIT="$(sed -n 's/.*"split"[[:space:]]*:[[:space:]]*\([^,]*\).*/\1/p' "$MANIFES
 
 echo "Restoring $BASE with compression: $COMPRESSION"
 
-if ls "$IMAGE_DIR/${BASE}.part-"* >/dev/null 2>&1; then
-  INPUT_CMD=(cat "$IMAGE_DIR/${BASE}.part-"*)
+if ls "$IMAGE_DIR/${BASE}".*.part-* >/dev/null 2>&1; then
+  PART_GLOB="$IMAGE_DIR/${BASE}".*.part-*
+elif ls "$IMAGE_DIR/${BASE}.part-"* >/dev/null 2>&1; then
+  PART_GLOB="$IMAGE_DIR/${BASE}.part-"*
 else
   case "$COMPRESSION" in
     zstd) FILE="$IMAGE_DIR/${BASE}.tar.zst" ;;
@@ -40,14 +42,14 @@ case "$COMPRESSION" in
   zstd)
     command -v zstd >/dev/null 2>&1 || { echo "zstd is required"; exit 1; }
     if [ "$SPLIT" = "true" ]; then
-      cat "$IMAGE_DIR/${BASE}.part-"* | zstd -d -c | docker load
+      cat $PART_GLOB | zstd -d -c | docker load
     else
       zstd -d -c "$FILE" | docker load
     fi
     ;;
   gzip)
     if [ "$SPLIT" = "true" ]; then
-      cat "$IMAGE_DIR/${BASE}.part-"* | gunzip -c | docker load
+      cat $PART_GLOB | gunzip -c | docker load
     else
       gunzip -c "$FILE" | docker load
     fi
@@ -55,14 +57,14 @@ case "$COMPRESSION" in
   xz)
     command -v xz >/dev/null 2>&1 || { echo "xz is required"; exit 1; }
     if [ "$SPLIT" = "true" ]; then
-      cat "$IMAGE_DIR/${BASE}.part-"* | xz -d -c | docker load
+      cat $PART_GLOB | xz -d -c | docker load
     else
       xz -d -c "$FILE" | docker load
     fi
     ;;
   none)
     if [ "$SPLIT" = "true" ]; then
-      cat "$IMAGE_DIR/${BASE}.part-"* | docker load
+      cat $PART_GLOB | docker load
     else
       docker load -i "$FILE"
     fi

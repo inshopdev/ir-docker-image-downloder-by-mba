@@ -1,8 +1,8 @@
-docker-images/*.tar -text
-docker-images/*.tar.zst -text
-docker-images/*.tar.gz -text
-docker-images/*.tar.xz -text
-docker-images/*.part-* -text
+docker-images/**/*.tar -text
+docker-images/**/*.tar.zst -text
+docker-images/**/*.tar.gz -text
+docker-images/**/*.tar.xz -text
+docker-images/**/*.part-* -text
 *.sh text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf

@@ -74,7 +74,10 @@ function Invoke-DockerLoadFromProcess {
 
 $TempCombined = $null
 if ($IsSplit) {
-    $parts = Get-ChildItem -Path $ImageDir -Filter "$Base.part-*" | Sort-Object Name
+    $parts = Get-ChildItem -Path $ImageDir -Filter "$Base.*.part-*" | Sort-Object Name
+    if (-not $parts) {
+        $parts = Get-ChildItem -Path $ImageDir -Filter "$Base.part-*" | Sort-Object Name
+    }
     if (-not $parts) {
         throw "No split parts found for $Base"
     }
@@ -119,7 +122,7 @@ try {
         }
         "none" {
             if ($IsSplit) {
-                Get-Content -Encoding Byte -Path (Get-ChildItem -Path $ImageDir -Filter "$Base.part-*" | Sort-Object Name).FullName -ReadCount 0 | docker load
+                docker load -i $TempCombined
             } else {
                 docker load -i (Join-Path $ImageDir "$Base.tar")
             }
