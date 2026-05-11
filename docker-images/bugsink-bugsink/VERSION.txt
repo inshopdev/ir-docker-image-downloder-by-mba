@@ -1,8 +1,0 @@
-Image: bugsink/bugsink
-Repository: bugsink/bugsink
-Version type: tag
-Version: latest
-Image ID: sha256:dbcd3db839b22892f9c92b5e111e7721707ca0a7ed9d362f9c0869eeed5e3ba8
-Repo digests:
-bugsink/bugsink@sha256:cf9ad368d436f0e9dd6e686d0becf5062cc079518efbf032a084c5f73fcf7754
-Created at: 2026-05-11T18:44:35Z
