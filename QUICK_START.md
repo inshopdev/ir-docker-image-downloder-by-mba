@@ -26,6 +26,8 @@ docker-images/bugsink-bugsink/README.md
 - XZ Utils: https://tukaani.org/xz/
 - gzip for Windows: https://gnuwin32.sourceforge.net/packages/gzip.htm
 
+در حالت پیش‌فرض backupها بدون فشرده‌سازی ساخته می‌شوند، پس برای restore فقط Docker لازم است. ابزارهای zstd، gzip یا xz فقط وقتی لازم می‌شوند که موقع ساخت backup همان compression را انتخاب کرده باشید.
+
 Ubuntu/Debian:
 
 ```bash
@@ -65,6 +67,36 @@ Windows PowerShell:
 
 ```powershell
 .\scripts\restore-windows.ps1
+```
+
+## بازیابی دستی split پیش‌فرض
+
+اگر فایل‌ها این شکلی هستند:
+
+```text
+my-image.tar.part-000
+my-image.tar.part-001
+```
+
+Linux/macOS:
+
+```bash
+cat my-image.tar.part-* > my-image.tar
+docker load -i my-image.tar
+docker images
+```
+
+Windows PowerShell:
+
+```powershell
+$out = [System.IO.File]::Create("my-image.tar")
+Get-ChildItem -Filter "my-image.tar.part-*" | Sort-Object Name | ForEach-Object {
+    $in = [System.IO.File]::OpenRead($_.FullName)
+    try { $in.CopyTo($out) } finally { $in.Close() }
+}
+$out.Close()
+docker load -i my-image.tar
+docker images
 ```
 
 ## بازیابی دستی zstd split

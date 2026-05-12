@@ -12,16 +12,30 @@ on:
         required: false
         type: string
         default: ""
+      platform:
+        description: "Target image platform"
+        required: true
+        type: choice
+        default: linux/amd64
+        options:
+          - linux/amd64
+          - linux/arm64
+          - linux/arm/v7
+          - linux/arm/v6
+          - linux/386
+          - linux/ppc64le
+          - linux/s390x
+          - linux/riscv64
       compression:
         description: "Compression method"
         required: true
         type: choice
-        default: zstd
+        default: none
         options:
+          - none
           - zstd
           - gzip
           - xz
-          - none
       zstd_level:
         description: "Zstd compression level, 1-19"
         required: true
@@ -87,6 +101,7 @@ jobs:
         env:
           IMAGE_INPUT: ${{ inputs.image }}
           OUTPUT_NAME_INPUT: ${{ inputs.output_name }}
+          PLATFORM: ${{ inputs.platform }}
           COMPRESSION: ${{ inputs.compression }}
           ZSTD_LEVEL: ${{ inputs.zstd_level }}
           SPLIT_SIZE_MB: ${{ inputs.split_size_mb }}

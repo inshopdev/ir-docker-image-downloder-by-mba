@@ -3,7 +3,8 @@ set -euo pipefail
 
 IMAGE="${1:-}"
 OUTPUT_NAME="${2:-}"
-COMPRESSION="${COMPRESSION:-zstd}"
+COMPRESSION="${COMPRESSION:-none}"
+PLATFORM="${PLATFORM:-linux/amd64}"
 ZSTD_LEVEL="${ZSTD_LEVEL:-10}"
 SPLIT_SIZE_MB="${SPLIT_SIZE_MB:-95}"
 OUTPUT_ROOT="${OUTPUT_DIR:-docker-images}"
@@ -24,6 +25,12 @@ command -v docker >/dev/null 2>&1 || { echo "docker is required"; exit 1; }
 if ! [[ "$IMAGE" =~ ^[A-Za-z0-9._/@:-]+$ ]]; then
   echo "Invalid Docker image name: $IMAGE"
   echo "Allowed characters: letters, numbers, dot, underscore, slash, colon, at-sign, and dash."
+  exit 1
+fi
+
+if ! [[ "$PLATFORM" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)?$ ]]; then
+  echo "Invalid platform: $PLATFORM"
+  echo "Use a Docker platform like linux/amd64, linux/arm64, or linux/arm/v7."
   exit 1
 fi
 
@@ -80,15 +87,20 @@ BASE="${OUTPUT_DIR}/${OUTPUT_NAME}"
 START_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 echo "Pulling image: $IMAGE"
-if ! docker pull "$IMAGE"; then
+echo "Platform: $PLATFORM"
+if ! docker pull --platform "$PLATFORM" "$IMAGE"; then
   echo ""
   echo "Docker could not pull: $IMAGE"
+  echo "Platform: $PLATFORM"
   echo ""
   echo "Use the real Docker image name in the workflow input."
   echo "Examples:"
   echo "  nginx:alpine"
   echo "  bugsink/bugsink"
   echo "  ghcr.io/owner/image:tag"
+  echo ""
+  echo "If the image exists but this still fails, the selected platform may not be available for that image."
+  echo "Try another platform such as linux/amd64 or linux/arm64."
   echo ""
   echo "Do not put the generated folder name as the image name."
   echo "For example, use 'bugsink/bugsink' as the image and let this tool create the folder 'bugsink-bugsink'."
@@ -173,6 +185,7 @@ Image: $IMAGE
 Repository: $IMAGE_REPOSITORY
 Version type: $IMAGE_VERSION_KIND
 Version: $IMAGE_VERSION
+Platform: $PLATFORM
 Image ID: $IMAGE_ID
 Output name: $OUTPUT_NAME
 Compression: $COMPRESSION
@@ -190,6 +203,7 @@ EOF
   echo "Repository: $IMAGE_REPOSITORY"
   echo "Version type: $IMAGE_VERSION_KIND"
   echo "Version: $IMAGE_VERSION"
+  echo "Platform: $PLATFORM"
   echo "Image ID: $IMAGE_ID"
   if [ -n "$IMAGE_DIGESTS" ]; then
     echo "Repo digests:"
@@ -204,6 +218,7 @@ cat > "$MANIFEST_FILE" <<EOF
   "image_repository": "$IMAGE_REPOSITORY",
   "version_type": "$IMAGE_VERSION_KIND",
   "version": "$IMAGE_VERSION",
+  "platform": "$PLATFORM",
   "image_id": "$IMAGE_ID",
   "output_name": "$OUTPUT_NAME",
   "directory": "docker-images/$OUTPUT_NAME",
@@ -352,6 +367,7 @@ Folder page: [$FOLDER_URL]($FOLDER_URL)
 | Repository | \`$IMAGE_REPOSITORY\` |
 | Version type | \`$IMAGE_VERSION_KIND\` |
 | Version | \`$IMAGE_VERSION\` |
+| Platform | \`$PLATFORM\` |
 | Output folder | \`docker-images/$OUTPUT_NAME\` |
 | Archive file | \`$ARCHIVE_FILE\` |
 | Compression | \`$COMPRESSION\` |
