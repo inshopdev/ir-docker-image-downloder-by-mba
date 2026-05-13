@@ -1,0 +1,19 @@
+{
+  "image": "nginxinc/nginx-unprivileged:1.27-alpine",
+  "image_repository": "nginxinc/nginx-unprivileged",
+  "version_type": "tag",
+  "version": "1.27-alpine",
+  "platform": "linux/amd64",
+  "image_id": "sha256:47ce8258a10e28ce4b4498588c25ef77ae328f4c56cbe3e8d5dcf4f6d8019997",
+  "output_name": "nginxinc-nginx-unprivileged-1.27-alpine",
+  "directory": "docker-images/nginxinc-nginx-unprivileged-1.27-alpine",
+  "archive_file": "nginxinc-nginx-unprivileged-1.27-alpine.tar",
+  "compression": "none",
+  "raw_tar_size_bytes": 49695232,
+  "stored_size_bytes": 49695232,
+  "split": false,
+  "split_size_mb": 95,
+  "part_count": 0,
+  "created_at": "2026-05-13T13:29:00Z",
+  "checksum_file": "nginxinc-nginx-unprivileged-1.27-alpine.sha256"
+}

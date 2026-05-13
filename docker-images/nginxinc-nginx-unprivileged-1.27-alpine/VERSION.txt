@@ -1,0 +1,9 @@
+Image: nginxinc/nginx-unprivileged:1.27-alpine
+Repository: nginxinc/nginx-unprivileged
+Version type: tag
+Version: 1.27-alpine
+Platform: linux/amd64
+Image ID: sha256:47ce8258a10e28ce4b4498588c25ef77ae328f4c56cbe3e8d5dcf4f6d8019997
+Repo digests:
+nginxinc/nginx-unprivileged@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0
+Created at: 2026-05-13T13:29:00Z
