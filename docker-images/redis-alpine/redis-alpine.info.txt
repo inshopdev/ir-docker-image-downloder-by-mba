@@ -1,0 +1,15 @@
+Image: redis:alpine
+Repository: redis
+Version type: tag
+Version: alpine
+Platform: linux/amd64
+Image ID: sha256:5068a1b35387fae8c8d5c2b30da50eacbb519b45e97a2524ae4758078fbc77a8
+Output name: redis-alpine
+Compression: none
+Archive file: redis-alpine.tar
+Raw tar size: 98241536 bytes
+Stored size: 98241536 bytes
+Split: false
+Part count: 0
+Started: 2026-05-13T14:09:18Z
+Finished: 2026-05-13T14:09:24Z

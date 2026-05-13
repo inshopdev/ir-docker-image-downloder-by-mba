@@ -1,0 +1,9 @@
+Image: redis:alpine
+Repository: redis
+Version type: tag
+Version: alpine
+Platform: linux/amd64
+Image ID: sha256:5068a1b35387fae8c8d5c2b30da50eacbb519b45e97a2524ae4758078fbc77a8
+Repo digests:
+redis@sha256:d146f83b1e0f02fc27c26a50cee39338c736674c5959db84363e6ae3cd9e02d2
+Created at: 2026-05-13T14:09:24Z

@@ -1,0 +1,19 @@
+{
+  "image": "redis:alpine",
+  "image_repository": "redis",
+  "version_type": "tag",
+  "version": "alpine",
+  "platform": "linux/amd64",
+  "image_id": "sha256:5068a1b35387fae8c8d5c2b30da50eacbb519b45e97a2524ae4758078fbc77a8",
+  "output_name": "redis-alpine",
+  "directory": "docker-images/redis-alpine",
+  "archive_file": "redis-alpine.tar",
+  "compression": "none",
+  "raw_tar_size_bytes": 98241536,
+  "stored_size_bytes": 98241536,
+  "split": false,
+  "split_size_mb": 95,
+  "part_count": 0,
+  "created_at": "2026-05-13T14:09:24Z",
+  "checksum_file": "redis-alpine.sha256"
+}
