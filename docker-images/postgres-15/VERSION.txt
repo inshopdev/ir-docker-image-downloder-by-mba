@@ -1,0 +1,9 @@
+Image: postgres:15
+Repository: postgres
+Version type: tag
+Version: 15
+Platform: linux/amd64
+Image ID: sha256:86832d1a469e1d9994122fff86321ded3622a964eac9b60999396e845ff42b20
+Repo digests:
+postgres@sha256:32016c79bea24c14917660106bc23a03341d94b9983aeb41f4130b4f3fbd6dd0
+Created at: 2026-05-13T13:38:11Z

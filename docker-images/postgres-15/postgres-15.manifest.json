@@ -1,0 +1,19 @@
+{
+  "image": "postgres:15",
+  "image_repository": "postgres",
+  "version_type": "tag",
+  "version": "15",
+  "platform": "linux/amd64",
+  "image_id": "sha256:86832d1a469e1d9994122fff86321ded3622a964eac9b60999396e845ff42b20",
+  "output_name": "postgres-15",
+  "directory": "docker-images/postgres-15",
+  "archive_file": "postgres-15.tar",
+  "compression": "none",
+  "raw_tar_size_bytes": 451643392,
+  "stored_size_bytes": 451643392,
+  "split": true,
+  "split_size_mb": 95,
+  "part_count": 5,
+  "created_at": "2026-05-13T13:38:11Z",
+  "checksum_file": "postgres-15.sha256"
+}

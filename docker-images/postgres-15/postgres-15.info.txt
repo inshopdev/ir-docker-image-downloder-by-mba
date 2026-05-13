@@ -1,0 +1,15 @@
+Image: postgres:15
+Repository: postgres
+Version type: tag
+Version: 15
+Platform: linux/amd64
+Image ID: sha256:86832d1a469e1d9994122fff86321ded3622a964eac9b60999396e845ff42b20
+Output name: postgres-15
+Compression: none
+Archive file: postgres-15.tar
+Raw tar size: 451643392 bytes
+Stored size: 451643392 bytes
+Split: true
+Part count: 5
+Started: 2026-05-13T13:37:59Z
+Finished: 2026-05-13T13:38:11Z
