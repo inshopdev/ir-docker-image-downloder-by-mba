@@ -1,9 +1,0 @@
-Image: albrechtloh/openwrt-docker
-Repository: albrechtloh/openwrt-docker
-Version type: tag
-Version: latest
-Platform: linux/amd64
-Image ID: sha256:c57cc230f4e61d8cf02f0a0676e56d875182c6e6b734fbe89965fcb83dca7041
-Repo digests:
-albrechtloh/openwrt-docker@sha256:3f738f024054ca31a57e9008e3f3da3fd9d750a3ea184f37816237f516ecd508
-Created at: 2026-05-14T18:54:58Z
