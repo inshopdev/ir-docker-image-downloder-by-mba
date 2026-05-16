@@ -26,6 +26,16 @@ on:
           - linux/ppc64le
           - linux/s390x
           - linux/riscv64
+      registry_login:
+        description: "Login to a private registry before pulling"
+        required: true
+        type: boolean
+        default: false
+      registry:
+        description: "Registry host for private images, for example ghcr.io"
+        required: false
+        type: string
+        default: "ghcr.io"
       compression:
         description: "Compression method"
         required: true
@@ -70,7 +80,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -85,6 +95,8 @@ jobs:
         env:
           COMMIT_TO_REPO: ${{ inputs.commit_to_repo }}
           SPLIT_SIZE_MB: ${{ inputs.split_size_mb }}
+          REGISTRY_LOGIN: ${{ inputs.registry_login }}
+          REGISTRY: ${{ inputs.registry }}
         run: |
           set -euo pipefail
           if ! [[ "$SPLIT_SIZE_MB" =~ ^[0-9]+$ ]]; then
@@ -96,6 +108,30 @@ jobs:
             echo "GitHub rejects normal git files larger than 100MB."
             exit 1
           fi
+          if [ "$REGISTRY_LOGIN" = "true" ] && ! [[ "$REGISTRY" =~ ^[A-Za-z0-9._:-]+$ ]]; then
+            echo "registry must be a registry host like ghcr.io, registry.example.com, or localhost:5000."
+            exit 1
+          fi
+
+      - name: Login to private registry
+        if: ${{ inputs.registry_login }}
+        shell: bash
+        env:
+          REGISTRY: ${{ inputs.registry }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$REGISTRY" ]; then
+            echo "registry is required when registry_login is enabled."
+            exit 1
+          fi
+          if [ -z "$REGISTRY_USERNAME" ] || [ -z "$REGISTRY_TOKEN" ]; then
+            echo "REGISTRY_USERNAME and REGISTRY_TOKEN repository secrets are required when registry_login is enabled."
+            echo "For GHCR private images, use a GitHub token with read:packages access."
+            exit 1
+          fi
+          echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$REGISTRY_USERNAME" --password-stdin
 
       - name: Save Docker image
         env:
