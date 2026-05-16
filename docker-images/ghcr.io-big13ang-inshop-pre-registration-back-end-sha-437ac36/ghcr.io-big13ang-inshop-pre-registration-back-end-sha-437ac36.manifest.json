@@ -1,0 +1,19 @@
+{
+  "image": "ghcr.io/big13ang/inshop-pre-registration-back-end:sha-437ac36",
+  "image_repository": "ghcr.io/big13ang/inshop-pre-registration-back-end",
+  "version_type": "tag",
+  "version": "sha-437ac36",
+  "platform": "linux/amd64",
+  "image_id": "sha256:6fb4e5ddb2e974bd80c691c45db1d8b6a0fd78cfe3240c64604334cb528e4f7e",
+  "output_name": "ghcr.io-big13ang-inshop-pre-registration-back-end-sha-437ac36",
+  "directory": "docker-images/ghcr.io-big13ang-inshop-pre-registration-back-end-sha-437ac36",
+  "archive_file": "ghcr.io-big13ang-inshop-pre-registration-back-end-sha-437ac36.tar",
+  "compression": "none",
+  "raw_tar_size_bytes": 1026523136,
+  "stored_size_bytes": 1026523136,
+  "split": true,
+  "split_size_mb": 95,
+  "part_count": 11,
+  "created_at": "2026-05-16T10:32:42Z",
+  "checksum_file": "ghcr.io-big13ang-inshop-pre-registration-back-end-sha-437ac36.sha256"
+}
