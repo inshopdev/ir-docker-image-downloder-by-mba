@@ -1,0 +1,15 @@
+Image: ghcr.io/big13ang/inshop-pre-registration-back-end:sha-437ac36
+Repository: ghcr.io/big13ang/inshop-pre-registration-back-end
+Version type: tag
+Version: sha-437ac36
+Platform: linux/amd64
+Image ID: sha256:6fb4e5ddb2e974bd80c691c45db1d8b6a0fd78cfe3240c64604334cb528e4f7e
+Output name: ghcr.io-big13ang-inshop-pre-registration-back-end-sha-437ac36
+Compression: none
+Archive file: ghcr.io-big13ang-inshop-pre-registration-back-end-sha-437ac36.tar
+Raw tar size: 1026523136 bytes
+Stored size: 1026523136 bytes
+Split: true
+Part count: 11
+Started: 2026-05-16T10:59:37Z
+Finished: 2026-05-16T11:00:05Z
