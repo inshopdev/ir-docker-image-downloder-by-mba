@@ -1,0 +1,9 @@
+Image: haxqer/jira
+Repository: haxqer/jira
+Version type: tag
+Version: latest
+Platform: linux/amd64
+Image ID: sha256:4ca5ce788862bafee7fb1db1e439655a20a2b2625c642ce69bec269e124d6a27
+Repo digests:
+haxqer/jira@sha256:d973c5346d61b20302ee2e7709b219119214e9c438f82433482c7fda9f795d0b
+Created at: 2026-05-17T13:03:07Z

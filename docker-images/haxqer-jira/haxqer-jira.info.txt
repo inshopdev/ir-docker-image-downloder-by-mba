@@ -1,0 +1,15 @@
+Image: haxqer/jira
+Repository: haxqer/jira
+Version type: tag
+Version: latest
+Platform: linux/amd64
+Image ID: sha256:4ca5ce788862bafee7fb1db1e439655a20a2b2625c642ce69bec269e124d6a27
+Output name: haxqer-jira
+Compression: none
+Archive file: haxqer-jira.tar
+Raw tar size: 1989749760 bytes
+Stored size: 1989749760 bytes
+Split: true
+Part count: 20
+Started: 2026-05-17T13:02:22Z
+Finished: 2026-05-17T13:03:07Z
